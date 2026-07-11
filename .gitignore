@@ -1,0 +1,14 @@
+# Rust build artifacts
+/target
+
+# Lokale Session mit Anmeldedaten liegt außerhalb des Repos (~/.crunchyroll-mcp),
+# aber zur Sicherheit hier ausschließen, falls jemand sie ins Repo kopiert.
+session.json
+.crunchyroll-mcp/
+
+# Editor / OS
+*.swp
+.DS_Store
+
+# Lokale Claude-Code-Einstellungen (maschinenspezifisch)
+.claude/settings.local.json
