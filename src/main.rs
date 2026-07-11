@@ -8,8 +8,10 @@ mod session;
 
 use std::sync::Arc;
 
+use chrono::{NaiveDate, Utc};
 use crunchyroll_rs::common::Pagination;
 use crunchyroll_rs::crunchyroll::DeviceIdentifier;
+use crunchyroll_rs::release_calendar::ReleaseCalendarItem;
 use crunchyroll_rs::search::{BrowseOptions, SearchMediaCollection};
 use crunchyroll_rs::{Crunchyroll, MediaCollection};
 use futures_util::StreamExt;
@@ -252,6 +254,13 @@ struct PlayheadParams {
     id: String,
     /// Neue Wiedergabeposition in Sekunden.
     position_seconds: u32,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ReleaseCalendarParams {
+    /// Ein Datum (YYYY-MM-DD) innerhalb der gewünschten Woche. Standard: aktuelle Woche.
+    #[serde(default)]
+    date: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -589,6 +598,60 @@ impl CrunchyrollServer {
             "id": id,
             "title": title,
             "playhead_seconds": position_seconds,
+        }))
+    }
+
+    #[tool(
+        description = "Den Crunchyroll-Release-Kalender (Simulcast) für die Woche eines Datums \
+        abrufen, gruppiert nach Wochentag. 'date' optional als YYYY-MM-DD; Standard ist die \
+        aktuelle Woche. Hinweis: Crunchyroll liefert meist nur Releases bis zum heutigen Tag."
+    )]
+    async fn crunchyroll_release_calendar(
+        &self,
+        Parameters(ReleaseCalendarParams { date }): Parameters<ReleaseCalendarParams>,
+    ) -> Result<CallToolResult, McpError> {
+        let client = self.ensure_client().await?;
+        let when = match date {
+            Some(s) => {
+                let nd = NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| {
+                    McpError::invalid_params(
+                        format!("Ungültiges Datum '{s}', erwartet Format YYYY-MM-DD."),
+                        None,
+                    )
+                })?;
+                nd.and_hms_opt(12, 0, 0).unwrap().and_utc()
+            }
+            None => Utc::now(),
+        };
+
+        let week = client.release_calendar(when).await.map_err(cr_err)?;
+
+        let day = |items: &[ReleaseCalendarItem]| -> Vec<Value> {
+            items
+                .iter()
+                .map(|it| {
+                    json!({
+                        "series_id": it.series_id,
+                        "episode_id": it.episode_id,
+                        "series_title": it.season_title,
+                        "episode_title": it.episode_title,
+                        "episode_number": it.episode_number,
+                        "release_time": it.release_time.to_rfc3339(),
+                        "premium": it.premium,
+                    })
+                })
+                .collect()
+        };
+
+        ok_json(json!({
+            "week_of": when.format("%Y-%m-%d").to_string(),
+            "monday": day(&week.monday),
+            "tuesday": day(&week.tuesday),
+            "wednesday": day(&week.wednesday),
+            "thursday": day(&week.thursday),
+            "friday": day(&week.friday),
+            "saturday": day(&week.saturday),
+            "sunday": day(&week.sunday),
         }))
     }
 }

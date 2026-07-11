@@ -77,11 +77,23 @@ Tool `crunchyroll_logout` verwenden.
 | `crunchyroll_remove_from_watchlist` | Serie/Movie-Listing von der Watchlist entfernen (`id`) |
 | `crunchyroll_watch_history` | Wiedergabe-History abrufen, inkl. Playhead (`limit?`) |
 | `crunchyroll_update_playhead` | „Weiterschauen"-Position setzen (`id`, `position_seconds`) |
+| `crunchyroll_release_calendar` | Simulcast-Release-Kalender einer Woche, nach Wochentag gruppiert (`date?` = YYYY-MM-DD) |
 
 Typischer Ablauf: `crunchyroll_search` → aus dem Ergebnis die Serien-ID nehmen →
 `crunchyroll_seasons` → Staffel-ID → `crunchyroll_episodes`.
 
-## Lizenz / Hinweis
+## Lizenz
+
+Dual-lizenziert unter **MIT** ([LICENSE-MIT](LICENSE-MIT)) **oder** **Apache-2.0**
+([LICENSE-APACHE](LICENSE-APACHE)) — nach Wahl des Nutzers. Das ist die in der
+Rust-Community übliche, breit kompatible Lizenzierung und passt zu den Lizenzen der
+verwendeten Bibliotheken (`crunchyroll-rs`: MIT/Apache-2.0, `rmcp`: Apache-2.0).
+
+Sofern nicht ausdrücklich anders angegeben, wird jeder bewusst zur Aufnahme in dieses
+Projekt eingereichte Beitrag gemäß Apache-2.0 wie oben dual-lizenziert, ohne zusätzliche
+Bedingungen.
+
+## Hinweis
 
 Inoffiziell, nicht mit Crunchyroll affiliiert. Nutzung auf eigene Verantwortung im Rahmen
 der Crunchyroll-Nutzungsbedingungen.

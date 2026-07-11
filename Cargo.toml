@@ -2,10 +2,15 @@
 name = "crunchyroll-mcp"
 version = "0.1.0"
 edition = "2024"
+description = "MCP-Server für Crunchyroll (Suche, Katalog, Watchlist, Release-Kalender) auf Basis von crunchyroll-rs"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/Eisenvater88/crunchyroll-mcp"
+readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.103"
-crunchyroll-rs = "0.18.0"
+chrono = "0.4.45"
+crunchyroll-rs = { version = "0.18.0", features = ["release-calendar"] }
 dirs = "6.0.0"
 futures-util = "0.3.32"
 rmcp = { version = "2.2.0", features = ["schemars", "server", "transport-io"] }
