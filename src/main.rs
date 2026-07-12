@@ -34,6 +34,9 @@ use session::{StoredSession, TokenKind};
 #[derive(Clone)]
 struct CrunchyrollServer {
     inner: Arc<Mutex<Inner>>,
+    // Wird vom `#[tool_handler]`-Makro zur Laufzeit genutzt; der Compiler sieht das
+    // nicht und würde sonst fälschlich "never read" warnen.
+    #[allow(dead_code)]
     tool_router: ToolRouter<Self>,
 }
 
@@ -66,7 +69,9 @@ impl CrunchyrollServer {
         let result = match stored.kind {
             TokenKind::EtpRt => builder.login_with_etp_rt(&stored.token, device).await,
             TokenKind::RefreshToken => {
-                builder.login_with_refresh_token(&stored.token, device).await
+                builder
+                    .login_with_refresh_token(&stored.token, device)
+                    .await
             }
         };
         result.map_err(cr_err)
@@ -579,7 +584,10 @@ impl CrunchyrollServer {
         let media = client.media_collection_from_id(&id).await.map_err(cr_err)?;
         let title = match media {
             MediaCollection::Episode(episode) => {
-                episode.set_playhead(position_seconds).await.map_err(cr_err)?;
+                episode
+                    .set_playhead(position_seconds)
+                    .await
+                    .map_err(cr_err)?;
                 episode.title.clone()
             }
             MediaCollection::Movie(movie) => {

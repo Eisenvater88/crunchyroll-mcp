@@ -1,5 +1,7 @@
 # crunchyroll-mcp
 
+[![CI](https://github.com/Eisenvater88/crunchyroll-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Eisenvater88/crunchyroll-mcp/actions/workflows/ci.yml)
+
 Ein MCP-Server (Model Context Protocol) für Crunchyroll, geschrieben in Rust auf Basis
 der aktiv gepflegten Bibliothek [`crunchyroll-rs`](https://github.com/crunchy-labs/crunchyroll-rs).
 
