@@ -9,15 +9,15 @@ mod session;
 use std::sync::Arc;
 
 use chrono::{NaiveDate, Utc};
+use crunchyroll_rs::auth::DeviceIdentifier;
 use crunchyroll_rs::common::Pagination;
-use crunchyroll_rs::crunchyroll::DeviceIdentifier;
 use crunchyroll_rs::release_calendar::ReleaseCalendarItem;
 use crunchyroll_rs::search::{BrowseOptions, SearchMediaCollection};
 use crunchyroll_rs::{Crunchyroll, MediaCollection};
 use futures_util::StreamExt;
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerInfo};
+use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
 use rmcp::{
     ErrorData as McpError, ServerHandler, ServiceExt, schemars, tool, tool_handler, tool_router,
 };
@@ -666,8 +666,8 @@ impl CrunchyrollServer {
 
 #[tool_handler]
 impl ServerHandler for CrunchyrollServer {
-    fn get_info(&self) -> ServerInfo {
-        let mut info = ServerInfo::default();
+    fn get_info(&self) -> ServerConfig {
+        let mut info = ServerConfig::default();
         info.capabilities = ServerCapabilities::builder().enable_tools().build();
         info.instructions = Some(
             "Crunchyroll-MCP: Suche, Katalog, Staffeln/Episoden und Watchlist. \
