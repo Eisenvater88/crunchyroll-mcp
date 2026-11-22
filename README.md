@@ -5,8 +5,9 @@
 Ein MCP-Server (Model Context Protocol) für Crunchyroll, geschrieben in Rust auf Basis
 der aktiv gepflegten Bibliothek [`crunchyroll-rs`](https://github.com/crunchy-labs/crunchyroll-rs).
 
-Der Server stellt Suche, Katalog-Browsing, Staffel-/Episoden-Auflistung und die
-persönliche Watchlist als MCP-Tools bereit. Die Anmeldung erfolgt über den
+Der Server stellt Suche, Katalog-Browsing, Staffel-/Episoden-Auflistung, die
+persönliche Watchlist, die Wiedergabe-History und einen wöchentlichen Release-Kalender
+als MCP-Tools bereit. Die Anmeldung erfolgt über den
 `etp-rt`-Cookie aus dem Browser (empfohlen) oder einen Refresh-Token; die Session wird
 gespeichert, sodass nach dem ersten Login jeder Neustart automatisch angemeldet ist.
 
@@ -19,7 +20,8 @@ erben wir die Auth-Pflege, statt sie selbst dauerhaft nachzuziehen.
 
 ## Bauen
 
-Voraussetzung: eine Rust-Toolchain (`rustup`, hier gebaut mit Rust 1.95).
+Voraussetzung: eine Rust-Toolchain (`rustup`), mindestens Rust 1.89 (Vorgabe von
+`crunchyroll-rs` 0.20); hier gebaut mit Rust 1.95.
 
 ```sh
 cargo build --release
@@ -79,10 +81,16 @@ Tool `crunchyroll_logout` verwenden.
 | `crunchyroll_remove_from_watchlist` | Serie/Movie-Listing von der Watchlist entfernen (`id`) |
 | `crunchyroll_watch_history` | Wiedergabe-History abrufen, inkl. Playhead (`limit?`) |
 | `crunchyroll_update_playhead` | „Weiterschauen"-Position setzen (`id`, `position_seconds`) |
-| `crunchyroll_release_calendar` | Simulcast-Release-Kalender einer Woche, nach Wochentag gruppiert (`date?` = YYYY-MM-DD) |
+| `crunchyroll_release_calendar` | Neu erschienene Episoden einer Woche (Mo–So, UTC), nach Wochentag gruppiert (`date?` = YYYY-MM-DD) |
 
 Typischer Ablauf: `crunchyroll_search` → aus dem Ergebnis die Serien-ID nehmen →
 `crunchyroll_seasons` → Staffel-ID → `crunchyroll_episodes`.
+
+**Zum Release-Kalender:** Crunchyroll hat den alten Kalender-Endpunkt abgeschaltet. Das Tool
+fragt deshalb (wie Crunchyroll selbst) den Katalog nach Episoden im Zeitraum Montag 00:00
+bis Montag 00:00 UTC ab und gruppiert sie nach dem Premium-Veröffentlichungszeitpunkt.
+`week_of` im Ergebnis ist immer der Montag der Woche. Zukünftige Folgen sind meist noch
+nicht enthalten.
 
 ## Lizenz
 
