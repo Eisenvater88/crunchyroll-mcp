@@ -9,10 +9,10 @@ readme = "README.md"
 
 [dependencies]
 anyhow = "1.0.104"
-chrono = "0.4.45"
-crunchyroll-rs = { version = "0.19.1", features = ["release-calendar"] }
+crunchyroll-rs = "0.20.0"
 dirs = "7.0.0"
 futures-util = "0.3.34"
+jiff = "1.0.2"
 rmcp = { version = "3.10.0", features = ["schemars", "server", "transport-io"] }
 schemars = "1.2.3"
 serde = { version = "1.0.229", features = ["derive"] }
