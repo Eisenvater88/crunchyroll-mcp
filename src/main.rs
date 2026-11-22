@@ -8,13 +8,16 @@ mod session;
 
 use std::sync::Arc;
 
-use chrono::{NaiveDate, Utc};
 use crunchyroll_rs::auth::DeviceIdentifier;
 use crunchyroll_rs::common::Pagination;
-use crunchyroll_rs::release_calendar::ReleaseCalendarItem;
-use crunchyroll_rs::search::{BrowseOptions, SearchMediaCollection};
+use crunchyroll_rs::search::{
+    BrowseMediaType, BrowseOptions, BrowseSortType, SearchMediaCollection,
+};
 use crunchyroll_rs::{Crunchyroll, MediaCollection};
 use futures_util::StreamExt;
+use jiff::civil::Date;
+use jiff::tz::TimeZone;
+use jiff::{Timestamp, ToSpan};
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::{CallToolResult, ContentBlock, ServerCapabilities, ServerConfig};
@@ -474,7 +477,7 @@ impl CrunchyrollServer {
             if let Value::Object(map) = &mut v {
                 map.insert("playhead_seconds".into(), json!(entry.playhead));
                 map.insert("fully_watched".into(), json!(entry.fully_watched));
-                map.insert("date_played".into(), json!(entry.date_played.to_rfc3339()));
+                map.insert("date_played".into(), json!(entry.date_played.to_string()));
             }
             list.push(v);
             if list.len() >= limit {
@@ -619,47 +622,76 @@ impl CrunchyrollServer {
         Parameters(ReleaseCalendarParams { date }): Parameters<ReleaseCalendarParams>,
     ) -> Result<CallToolResult, McpError> {
         let client = self.ensure_client().await?;
-        let when = match date {
-            Some(s) => {
-                let nd = NaiveDate::parse_from_str(s.trim(), "%Y-%m-%d").map_err(|_| {
-                    McpError::invalid_params(
-                        format!("Ungültiges Datum '{s}', erwartet Format YYYY-MM-DD."),
-                        None,
-                    )
-                })?;
-                nd.and_hms_opt(12, 0, 0).unwrap().and_utc()
+        let day_in_week: Date = match date {
+            Some(s) => s.trim().parse().map_err(|_| {
+                McpError::invalid_params(
+                    format!("Ungültiges Datum '{s}', erwartet Format YYYY-MM-DD."),
+                    None,
+                )
+            })?,
+            None => Timestamp::now().to_zoned_datetime(TimeZone::UTC).date(),
+        };
+
+        // Seit crunchyroll-rs 0.20 gibt es keinen eigenen Kalender-Endpunkt mehr; Crunchyroll
+        // baut den Kalender selbst über `browse` mit Datumsbereich (Montag–Montag, UTC).
+        let date_err =
+            |e: jiff::Error| McpError::internal_error(format!("Datumsfehler: {e}"), None);
+        let offset = i64::from(day_in_week.weekday().to_monday_zero_offset());
+        let monday = day_in_week.checked_sub(offset.days()).map_err(date_err)?;
+        let from = monday
+            .to_zoned_datetime(TimeZone::UTC)
+            .map_err(date_err)?
+            .timestamp();
+        let to = from.checked_add(168.hours()).map_err(date_err)?;
+
+        let options = BrowseOptions::default()
+            .media_type(BrowseMediaType::Episode)
+            .sort(BrowseSortType::NewlyAdded)
+            .from_date(from)
+            .to_date(to);
+        let mut pag = client.browse(options);
+
+        const MAX_ITEMS: usize = 500;
+        let mut days: [Vec<Value>; 7] = Default::default();
+        let mut seen = 0usize;
+        while let Some(item) = pag.next().await {
+            let item = item.map_err(cr_err)?;
+            seen += 1;
+            if let SearchMediaCollection::Episode(ep) = item {
+                let release = ep.premium_available_date;
+                let idx = release
+                    .to_zoned_datetime(TimeZone::UTC)
+                    .weekday()
+                    .to_monday_zero_offset() as usize;
+                days[idx].push(json!({
+                    "series_id": ep.series_id,
+                    "episode_id": ep.id,
+                    "series_title": ep.series_title,
+                    "season_title": ep.season_title,
+                    "episode_title": ep.title,
+                    "episode_number": ep.episode_number,
+                    "release_time": release.to_string(),
+                    "premium": ep.is_premium_only,
+                }));
             }
-            None => Utc::now(),
-        };
-
-        let week = client.release_calendar(when).await.map_err(cr_err)?;
-
-        let day = |items: &[ReleaseCalendarItem]| -> Vec<Value> {
-            items
-                .iter()
-                .map(|it| {
-                    json!({
-                        "series_id": it.series_id,
-                        "episode_id": it.episode_id,
-                        "series_title": it.season_title,
-                        "episode_title": it.episode_title,
-                        "episode_number": it.episode_number,
-                        "release_time": it.release_time.to_rfc3339(),
-                        "premium": it.premium,
-                    })
-                })
-                .collect()
-        };
+            if seen >= MAX_ITEMS {
+                break;
+            }
+        }
+        for d in &mut days {
+            d.sort_by(|a, b| a["release_time"].as_str().cmp(&b["release_time"].as_str()));
+        }
+        let [mon, tue, wed, thu, fri, sat, sun] = days;
 
         ok_json(json!({
-            "week_of": when.format("%Y-%m-%d").to_string(),
-            "monday": day(&week.monday),
-            "tuesday": day(&week.tuesday),
-            "wednesday": day(&week.wednesday),
-            "thursday": day(&week.thursday),
-            "friday": day(&week.friday),
-            "saturday": day(&week.saturday),
-            "sunday": day(&week.sunday),
+            "week_of": monday.to_string(),
+            "monday": mon,
+            "tuesday": tue,
+            "wednesday": wed,
+            "thursday": thu,
+            "friday": fri,
+            "saturday": sat,
+            "sunday": sun,
         }))
     }
 }
